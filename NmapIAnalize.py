@@ -82,7 +82,7 @@ def send_message(message):
     try:
         response = chat.choices[0].message.content
     except:
-        log.error("Error while getting response from model. Try again later")
+        log.info("Error while getting response from model. Try again later")
         exit(1)
 
     # Add model response to conversation history
