@@ -1,0 +1,6 @@
+openai
+pwntools
+termcolor
+rich
+InquirerPy
+python-dotenv
