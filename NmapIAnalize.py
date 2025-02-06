@@ -13,8 +13,6 @@
 
 # Import necessary libraries
 import os
-import time
-import sys
 from dotenv import load_dotenv
 from InquirerPy import prompt
 from openai import OpenAI
@@ -60,8 +58,8 @@ def not_free_warn():
         ]
         try:
             answers = prompt(questions)
-        except Exception as e:
-            log.error(f"Error while asking for file: {e}")
+        except Exception:
+            log.error(f"Error while asking for file")
             exit(1)
             
         user_choice = answers["user_choice"]
@@ -81,9 +79,14 @@ def send_message(message):
     )
     try:
         response = chat.choices[0].message.content
-    except:
-        log.error("Error while getting response from model. Try again later")
+        
+        if response == "":
+            raise TypeError
+             
+    except Exception:
+        log.failure("Error while talking with model. Try again later")
         exit(1)
+
 
     # Add model response to conversation history
     conversation_history.append({"role": "assistant", "content": response})
@@ -103,14 +106,15 @@ def ask_for_file():
         {
             "type": "list",
             "name": "user_input",
-            "message": "Select a file:",
+            "message": f"Select a file to analyze with {IA_MODEL}",
             "choices": posible_answers
         }
     ]
     try:
         answers = prompt(questions)
-    except Exception as e:
-        log.error(f"Error while asking for file: {e}")
+        
+    except Exception:
+        log.error(f"Error while asking for file")
         exit(1)
         
     user_input = answers["user_input"]
@@ -119,23 +123,20 @@ def ask_for_file():
         exit(0)
     return user_input
 
-# Handle empty response from the model
-def empty_response():
-    log.error("It seems like the model is not answering")
-    log.info("Ending session...")
-    exit(1)
 
 # Communicate with the AI model
 def talk_with_model(user_input):
     try: 
         response = send_message(user_input)
-        if response == "":
-            raise empty_response()
-        return response
         
-    except Exception as e:
-        log.error(f"Error while talking with model. Try again later")
+        if response == "":
+            raise TypeError
+             
+    except Exception:
+        log.failure("Error while talking with model. Try again later")
         exit(1)
+
+    return response
 
 # Ask the user if they want to ask further questions
 def ask_for_further_questions():
@@ -149,8 +150,9 @@ def ask_for_further_questions():
         ]
     try:
         answers = prompt(questions)
-    except Exception as e:
-        log.error(f"Error while asking for file: {e}")
+        
+    except Exception:
+        log.error(f"Error while asking for file.")
         exit(1)
         
     user_choice = answers["user_choice"]
@@ -180,10 +182,6 @@ def keep_talking():
             markdown_to_terminal(response)
             keep_talking_progress.success("Output printed")
 
-def clear_line():
-    sys.stdout.write('\r')
-    sys.stdout.flush()
-
 # Main function to run the script
 def main():
     
@@ -198,33 +196,34 @@ def main():
     """
     console.print(ascii_art)
     
+    # Warn the user if a paid model is being used
     not_free_warn()
     
+    log.info(f"Welcome to NmapIAnalize! --- An AI-powered Nmap analysis tool by {colored('@abelsrzz', 'blue')}")
     log.info("Press Ctrl+C for exit.")
     print("\n")
-    
-    time.sleep(1)
+
+    # Verbose information about the AI model being used
+    log.indented = True
+    log.info(f"You are using {IA_MODEL}")
+    log.indented = False
     
     # Initialize a progress log for the analysis process
-    talk_progress = log.progress(f"Analyzing Nmap file with {IA_MODEL}")
+    talk_progress = log.progress(f"Analysis in progress")
     
     # Prompt the user to select an Nmap output file to analyze
-    talk_progress.status("Please select a Nmap output file to analyze")
     user_input = ask_for_file()
     
     # Read the content of the selected file
-    clear_line()
     talk_progress.status("Sending file content to model")
     with open(user_input, 'r') as file:
         file_content = file.read()
     
     # Send the file content to the AI model for analysis
-    clear_line()
     talk_progress.status("Waiting for model response")
     response = talk_with_model(file_content)
 
     # Log the received response and print it to the terminal
-    clear_line()
     talk_progress.status("Output received")
     log.info(f"{IA_MODEL}:")
     markdown_to_terminal(response)
@@ -237,6 +236,11 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+
+    except TypeError:
+        log.error("TypeError: Please check the input file and try again.")
+        exit(1)
+        
     except KeyboardInterrupt:
         log.info(colored("Ctrl+C detected. Exiting gracefully...", "red"))
         exit(1)
